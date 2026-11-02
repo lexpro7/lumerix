@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { useRef, useState, type DragEvent } from "react";
 import { ImagePlus, LoaderCircle } from "lucide-react";
 import type { Photo } from "../processing/decode";
@@ -7,11 +8,13 @@ export default function Upload({
   photo,
   onLoad,
   busy,
+  onRemove,
 }: {
   label: string;
   photo: Photo | null;
   onLoad: (f: File) => void;
   busy: boolean;
+  onRemove?: () => void;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [drag, setDrag] = useState(false);
@@ -23,8 +26,8 @@ export default function Upload({
   return (
     <div className="upload-section">
       <div className="section-label">
-        <span>{label}</span>
-        {photo && <span className="tag">LOADED</span>}
+        <span>{t(label)}</span>
+        {photo && <span className="tag">{t("LOADED")}</span>}
       </div>
       <button
         className={`upload ${drag ? "drag" : ""} ${photo ? "has-photo" : ""}`}
@@ -35,28 +38,38 @@ export default function Upload({
         }}
         onDragLeave={() => setDrag(false)}
         onDrop={drop}
-        aria-label={`Upload ${label.toLowerCase()} image`}
+        aria-label={t(`Upload ${label.toLowerCase()} image`)}
         disabled={busy}
       >
         {photo ? (
           <>
-            <img src={photo.url} alt={`${label} thumbnail`} />
-            <span className="replace">Replace image</span>
+            <img src={photo.url} alt={t(`${label} thumbnail`)} />
+            <span className="replace">{t("Replace image")}</span>
           </>
         ) : (
           <>
             <ImagePlus size={24} />
-            <strong>Drop your {label.toLowerCase()} here</strong>
-            <span>or click to browse</span>
+            <strong>{t(`Drop your ${label.toLowerCase()} here`)}</strong>
+            <span>{t("or click to browse")}</span>
           </>
         )}
         {busy && (
           <span className="upload-loading">
-            <LoaderCircle className="spin" />
-            Decoding…
-          </span>
+            <LoaderCircle className="spin" />{t("Decoding…")}</span>
         )}
       </button>
+      <div className="mobile-upload">
+        {photo && <img src={photo.url} alt={t(`${label} thumbnail`)} />}
+        <button type="button" className="button" disabled={busy}
+          aria-label={t(photo ? `Replace ${label.toLowerCase()} image` : undefined)}
+          onClick={() => input.current?.click()}>
+          {busy ? <LoaderCircle size={20} className="spin" aria-hidden="true" /> : <ImagePlus size={20} aria-hidden="true" />}
+          {t(photo ? "Replace" : label === "Reference" ? "Choose Reference" : "Choose Photo")}
+        </button>
+        {photo && onRemove && <button type="button" className="button subtle" disabled={busy}
+          aria-label={t(`Remove ${label.toLowerCase()} image`)} onClick={onRemove}>{t("Remove")}</button>}
+        {busy && <span className="mobile-upload-status" role="status">{t("Reading image...")}</span>}
+      </div>
       <input
         ref={input}
         type="file"
@@ -71,11 +84,11 @@ export default function Upload({
         <p className="file-name" title={photo.name}>
           {photo.name}
           <span>
-            {photo.width} × {photo.height}
+            {t(photo.width)} × {t(photo.height)}
           </span>
         </p>
       ) : (
-        <p className="file-hint">JPG, PNG, WebP · up to 80 MB</p>
+        <p className="file-hint">{t("JPG, PNG, WebP · up to 80 MB")}</p>
       )}
     </div>
   );

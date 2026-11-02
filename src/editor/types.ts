@@ -94,19 +94,31 @@ export interface Mask {
   opacity: number;
   adjustments: LocalParams;
 }
+export interface Enhancement {
+  metrics?: import("../processing/upscale").UpscaleMetrics;
+  elapsedMs?: number;
+  blob: Blob;
+  before: Blob;
+  width: number;
+  height: number;
+}
 export interface DocumentState {
+  enhanced?: Enhancement;
+  upscale?: "none" | "fast" | "ai";
   params: Params;
   style: Style;
   geometry: Geometry;
   masks: Mask[];
 }
 export const freshDocument = (): DocumentState => ({
+  upscale: "none",
+  enhanced: undefined,
   params: { ...defaults },
   style: defaultStyle(),
   geometry: { ...defaultGeometry },
   masks: [],
 });
-export type Workspace = "edit" | "ai" | "dna" | "looks" | "crop";
+export type Workspace = "edit" | "ai" | "dna" | "looks" | "crop" | "enhance";
 export function normalizeStyle(style?: Partial<Style>): Style {
   const base = defaultStyle();
   return {

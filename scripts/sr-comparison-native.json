@@ -1,0 +1,73 @@
+{
+  "protocol": "center 256x256 crop, bicubic reduction to 128x128, reconstructed 256x256; not full photograph / not GPU",
+  "reports": [
+    {
+      "name": "swin",
+      "run": 0,
+      "wallMs": 542.1600999999991,
+      "metrics": {
+        "backend": "native CPU",
+        "warm": false,
+        "loadMs": 8112.549100000001,
+        "packMs": 2.167199999999866,
+        "inferenceMs": 532.1764999999996,
+        "stitchMs": 1.6212000000014086,
+        "tiles": 1
+      },
+      "controlledPSNR": 39.012882348750274,
+      "meanHorizontalGradient": 5.4549223856209155,
+      "outputSHA256": "ecb4d94545c688888fe777ad0216e3e48cf354f42497bbbaab49dfa685ee23ef"
+    },
+    {
+      "name": "swin",
+      "run": 1,
+      "wallMs": 552.5359000000008,
+      "metrics": {
+        "backend": "native CPU",
+        "warm": true,
+        "loadMs": 0,
+        "packMs": 1.6300000000010186,
+        "inferenceMs": 544.2075999999997,
+        "stitchMs": 0.39789999999993597,
+        "tiles": 1
+      },
+      "controlledPSNR": 39.012882348750274,
+      "meanHorizontalGradient": 5.4549223856209155,
+      "outputSHA256": "ecb4d94545c688888fe777ad0216e3e48cf354f42497bbbaab49dfa685ee23ef"
+    },
+    {
+      "name": "general-v3",
+      "run": 0,
+      "wallMs": 121.92380000000048,
+      "metrics": {
+        "backend": "native CPU",
+        "warm": false,
+        "loadMs": 34.94809999999961,
+        "packMs": 1.653600000001461,
+        "inferenceMs": 115.47539999999935,
+        "stitchMs": 2.5552000000006956,
+        "tiles": 1
+      },
+      "controlledPSNR": 25.001344820705246,
+      "meanHorizontalGradient": 4.432873774509804,
+      "outputSHA256": "0ccf5e791507178d4cb6dd02db2b6e2b7f415ab0b28b2b2e0cbd95023e007aa5"
+    },
+    {
+      "name": "general-v3",
+      "run": 1,
+      "wallMs": 132.97320000000036,
+      "metrics": {
+        "backend": "native CPU",
+        "warm": true,
+        "loadMs": 0,
+        "packMs": 0.1723999999994703,
+        "inferenceMs": 125.46980000000076,
+        "stitchMs": 0.8622999999988679,
+        "tiles": 1
+      },
+      "controlledPSNR": 25.001344820705246,
+      "meanHorizontalGradient": 4.432873774509804,
+      "outputSHA256": "0ccf5e791507178d4cb6dd02db2b6e2b7f415ab0b28b2b2e0cbd95023e007aa5"
+    }
+  ]
+}

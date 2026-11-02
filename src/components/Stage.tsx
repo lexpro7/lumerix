@@ -1,6 +1,6 @@
+import { t } from "../i18n";
 import { useEffect, useRef, useState } from "react";
 import {
-  Aperture,
   ArrowLeftRight,
   ImagePlus,
   Minus,
@@ -69,9 +69,15 @@ export default function Stage({
   useEffect(() => {
     const el = viewport.current;
     if (!el) return;
-    const ro = new ResizeObserver(([v]) =>
-      setSize({ w: v.contentRect.width, h: v.contentRect.height }),
-    );
+    const ro = new ResizeObserver(([v]) => {
+      setSize({ w: v.contentRect.width, h: v.contentRect.height });
+      // A mobile sheet resize must keep the entire photo in the workspace,
+      // even if the previous workspace was zoomed or panned.
+      if (window.matchMedia("(max-width: 767px)").matches) {
+        setZoom(1);
+        setPan({ x: 0, y: 0 });
+      }
+    });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
@@ -195,26 +201,22 @@ export default function Stage({
     <section className="canvas-area">
       <div className="canvas-bar">
         <span>
-          {cropEditing
+          {t(cropEditing
             ? "CROP · ORIGINAL COORDINATES"
             : tools.editing
               ? "MASK · ORIGINAL COORDINATES"
-              : "YOUR PHOTOGRAPH"}
+              : "YOUR PHOTOGRAPH")}
         </span>
         {raw ? (
-          <button className="active" onClick={onDone}>
-            Done
-          </button>
+          <button className="active" onClick={onDone}>{t("Done")}</button>
         ) : (
           <button
             className={compare ? "active" : ""}
             onClick={() => setCompare(!compare)}
             disabled={!photo || raw}
-            title="Before / After (B)"
+            title={t("Before / After (B)")}
           >
-            <ArrowLeftRight size={15} />
-            Before / After
-          </button>
+            <ArrowLeftRight size={15} />{t("Before / After")}</button>
         )}
       </div>
       <div
@@ -268,7 +270,7 @@ export default function Stage({
             <canvas
               ref={before}
               className="photo-layer"
-              aria-label="Original image"
+              aria-label={t("Original image")}
               style={{
                 clipPath: showCompare
                   ? `inset(0 ${100 - split}% 0 0)`
@@ -278,15 +280,19 @@ export default function Stage({
             <canvas
               ref={after}
               className="photo-layer"
-              aria-label="Edited image"
+              aria-label={t("Edited image")}
               style={{
                 clipPath: showCompare ? `inset(0 0 0 ${split}%)` : undefined,
               }}
             />
             {showCompare && (
               <>
-                <span className="compare-label left">BEFORE</span>
-                <span className="compare-label right">AFTER</span>
+                <span className="compare-label left">
+                  {t(result?.upscaled ? "Original" : "BEFORE")}
+                </span>
+                <span className="compare-label right">
+                  {t(result?.upscaled ? "Upscaled" : "AFTER")}
+                </span>
                 <div className="compare-divider" style={{ left: `${split}%` }}>
                   <ArrowLeftRight size={20} />
                 </div>
@@ -297,7 +303,7 @@ export default function Stage({
                   max={100}
                   step={0.1}
                   value={split}
-                  aria-label="Before after divider"
+                  aria-label={t("Before after divider")}
                   onChange={(e) => setSplit(+e.target.value)}
                 />
               </>
@@ -306,7 +312,7 @@ export default function Stage({
               <canvas
                 ref={overlay}
                 className="photo-layer mask-overlay"
-                aria-label="Selected mask overlay"
+                aria-label={t("Selected mask overlay")}
               />
             )}
             {cropEditing && (
@@ -329,42 +335,32 @@ export default function Stage({
         ) : (
           <div className="studio-empty">
             <div className="empty-symbol">
-              <Aperture size={40} />
+              <img src="/icon.svg" alt={t("Lumerix aperture")} width="52" height="52" />
             </div>
-            <span className="eyebrow">YOUR LIGHT. YOUR POINT OF VIEW.</span>
-            <h1>
-              A little light.
-              <br />A whole new feeling.
-            </h1>
-            <p>
-              Shape the colors. Find your look.
-              <br />A private photo studio, right on your device.
-            </p>
+            <span className="eyebrow">{t("YOUR LIGHT. YOUR POINT OF VIEW.")}</span>
+            <h1>{t("A little light.")}<br />{t("A whole new feeling.")}</h1>
+            <p>{t("Shape the colors. Find your look.")}<br />{t("A private photo studio, right on your device.")}</p>
             <button
               className="button primary"
               onClick={() => input.current?.click()}
             >
-              <ImagePlus size={17} />
-              Open a photograph
-            </button>
-            <small>JPEG, PNG, WebP · Nothing is uploaded</small>
+              <ImagePlus size={17} />{t("Open a photograph")}</button>
+            <small>{t("JPEG, PNG, WebP · Nothing is uploaded")}</small>
           </div>
         )}
         {busy && (
-          <div className="preview-busy" role="status">
-            Developing preview…
-          </div>
+          <div className="preview-busy" role="status">{t("Developing preview…")}</div>
         )}
       </div>
       <div className="viewbar">
         <span>
-          {photo
+          {t(photo
             ? `${photo.width} × ${photo.height} original pixels`
-            : "Tip: open a photo, then start with Light in Edit."}
+            : "Tip: open a photo, then start with Light in Edit.")}
         </span>
         <div>
           <button
-            title="Zoom out"
+            title={t("Zoom out")}
             disabled={!photo || raw}
             onClick={() => setZoom((z) => Math.max(0.25, z - 0.25))}
           >
@@ -372,14 +368,14 @@ export default function Stage({
           </button>
           <span>{Math.round(fit * zoom * 100)}%</span>
           <button
-            title="Zoom in"
+            title={t("Zoom in")}
             disabled={!photo || raw}
             onClick={() => setZoom((z) => Math.min(6, z + 0.25))}
           >
             <Plus size={15} />
           </button>
           <button
-            title="Fit image (F)"
+            title={t("Fit image (F)")}
             disabled={!photo}
             onClick={() => {
               setZoom(1);
@@ -389,11 +385,18 @@ export default function Stage({
             <Maximize size={15} />
           </button>
           <button
-            title="100% pixel view"
+            title={t("100% pixel view")}
             disabled={!photo || raw}
             onClick={() => setZoom(1 / fit)}
           >
-            1:1
+            100%
+          </button>
+          <button
+            title={t("200% pixel view")}
+            disabled={!photo || raw}
+            onClick={() => setZoom(2 / fit)}
+          >
+            200%
           </button>
         </div>
       </div>

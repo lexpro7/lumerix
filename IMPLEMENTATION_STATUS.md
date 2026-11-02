@@ -128,3 +128,57 @@ Reproduce: `npm install`, `npm run dev`, then open
 button. AI buttons download and run actual models; they are separate checks.
 The harness is development-only and is not an entry point in the production build.
 This is a safe checkpoint with the unresolved items above explicitly deferred.
+
+## Upscaler follow-up — 2026-11-02
+
+Implemented bicubic Fast 2x, full-resolution Apply into the main workspace,
+Original/Upscaled comparison and 100%/200% views, session-only lossless output
+reuse for export/history, invalidation on edits, cancellation/stale-job protection,
+phone Fast-only selection, and corrected upscaler labels. AI now rejects alpha
+rather than amplifying reconstructed RGB, with larger tile context halos.
+
+Executed: TypeScript checks and 45 focused tests passed. Real-photo Fast output
+encoded at 1024x1024 PNG/JPEG with native Sharp; PNG pixels matched exactly.
+Cached-export orchestration tests passed with canvas doubles. Native CPU actual
+Swin2SR inference returned 256x256 from a photographic 128x128 input, but visual
+inspection revealed distorted fine detail. AI quality is NOT resolved; marked
+experimental with a visible warning. No synthetic test is claimed as AI accuracy.
+
+Not executed: browser UI/export/alignment, browser GPU/WASM quality, and memory
+profiling (browser access host unavailable). Full-resolution comparison can use
+hundreds of MB; history keeps compressed output blobs. See ENHANCE.md for exact
+behavior, limits and next validation steps. This is not an AI production-readiness
+sign-off. No unrelated/mobile layout redesign was performed.
+
+## AI upscaler performance follow-up - 2026-11-02
+
+Added bounded warm-worker/model reuse (one idle session, 60-second expiry),
+rejected-load eviction, direct RGB packing/stitching, phase timing telemetry and
+elapsed/backend UI. FP32 model, tile sizes, overlap and output math unchanged.
+TypeScript and 17 focused tests passed. Supplied photo: 1224x816. Native CPU first
+inference before/after: 112.434/114.480 seconds, warm: 117.351/108.725 seconds,
+cached-weight initialization: 5.839/6.886 seconds. All four output hashes match.
+Over 99.8% is inside the model pipeline. Single-sample variation prevents claiming
+a reliable throughput gain; no Intel Arc acceleration claim.
+
+Browser connector unavailable; native Chrome opened the benchmark but modal
+file-picker automation failed. GPU kernel/transfer timings remain unverified.
+/tests/browser/upscale-benchmark.html offers baseline/optimized cold/warm runs
+with local photos. SPAN investigated as an efficient candidate, not integrated
+without validated browser 2x weights and quality tests. Swin2SR remains intact.
+See UPSCALE_PERFORMANCE.md and scripts/benchmark-user-{before,after}.json.
+
+## Benchmark-only alternative model investigation - 2026-11-02
+
+Added /tests/browser/sr-compare.html: explicit WebGPU/WASM selection, sequential
+cold/warm Swin2SR and Real-ESRGAN General v3 comparison, timing/tile telemetry,
+matching output crops, PNG/JSON download and optional controlled PSNR. The
+candidate is explicitly labelled a 4x network reduced to 2x output. SHA-256 and
+pinned revision protect the model download. Editor processing/UI modes unchanged.
+
+TypeScript and four focused adapter tests passed. Actual native CPU comparison
+on the same supplied-photo crop: warm 553ms Swin2SR / 133ms candidate; PSNR
+39.01 / 25.00 dB. Candidate visibly smooths road grain and simplifies vegetation.
+This is a 128x128 input crop test, NOT full-image WebGPU timing. No replacement
+approved. Browser access host unavailable; manual instructions, provenance and
+exact limitations are in MODEL_COMPARISON.md. No full suite/build run.

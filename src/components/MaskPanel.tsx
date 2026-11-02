@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from "react";
+import { t } from "../i18n";
+import { useState, useRef, useLayoutEffect } from "react";
 import {
   Brush,
   CloudSun,
@@ -16,7 +17,7 @@ import { makeMask, combineMasks, sampleMask } from "../processing/masks";
 import type { Photo } from "../processing/decode";
 import { Slider, Group } from "./Controls";
 import { basicControls } from "./EditPanel";
-import type { Segment } from "../ai/client";
+import { disposeAI, portraitSegments, semanticSegments, type Segment } from "../ai/client";
 export interface MaskTools {
   selected: string | null;
   setSelected: (id: string | null) => void;
@@ -31,10 +32,12 @@ export interface MaskTools {
 }
 export default function MaskPanel({
   photo,
+  active,
   tools,
   onError,
 }: {
   photo: Photo | null;
+  active: boolean;
   tools: MaskTools;
   onError: (s: string) => void;
 }) {
@@ -44,18 +47,16 @@ export default function MaskPanel({
     [segments, setSegments] = useState<Segment[]>([]),
     [operation, setOperation] = useState<"new" | "add" | "subtract">("new");
   const generation = useRef(0);
-  useEffect(() => {
+  useLayoutEffect(() => {
     generation.current++;
     setBusy(false);
     setSegments([]);
     setStatus("");
-  }, [photo]);
-  useEffect(
-    () => () => {
+    return () => {
       generation.current++;
-    },
-    [],
-  );
+      disposeAI();
+    };
+  }, [photo, active]);
   const selected = e.masks.find((m) => m.id === tools.selected);
   const update = (patch: Partial<Mask>, label = "Edit mask") => {
     if (selected)
@@ -108,19 +109,18 @@ export default function MaskPanel({
     setSegments([]);
   }
   async function automatic(kind: "sky" | "person" | "skin" | "object") {
-    if (!photo) return;
+    if (!photo || !active) return;
     const id = ++generation.current;
     setBusy(true);
     setStatus("Preparing local AI…");
     onError("");
     try {
-      const ai = await import("../ai/client");
       const output =
         kind === "person" || kind === "skin"
-          ? await ai.portraitSegments(photo, (s) => {
+          ? await portraitSegments(photo, (s) => {
               if (id === generation.current) setStatus(s);
             })
-          : await ai.semanticSegments(photo, (s) => {
+          : await semanticSegments(photo, (s) => {
               if (id === generation.current) setStatus(s);
             });
       if (id !== generation.current) return;
@@ -132,6 +132,8 @@ export default function MaskPanel({
       } else {
         const match = output.find((s) => s.label === kind);
         if (!match)
+          throw new Error(`No ${kind} was detected. Try Brush instead.`);
+        if (!match.data.some((v) => v > 0))
           throw new Error(`No ${kind} was detected. Try Brush instead.`);
         add(match, kind);
         setStatus(
@@ -151,32 +153,18 @@ export default function MaskPanel({
   }
   return (
     <>
-      <p className="help">
-        Make a selection, then adjust only that area. Masks remain editable
-        after Done.
-      </p>
+      <p className="help">{t("Make a selection, then adjust only that area. Masks remain editable after Done.")}</p>
       <div className="model-notice">
-        <strong>On-device AI · one-time downloads</strong>
-        <p>
-          Sky / objects: about 15 MB model, plus up to 30 MB runtime. Person /
-          skin: about 16 MB plus runtime. Downloaded assets are cached for
-          offline reuse; storage eviction may require downloading again. Photos
-          never leave this device.
-        </p>
+        <strong>{t("On-device AI · one-time downloads")}</strong>
+        <p>{t("Sky / objects: about 15 MB model, plus up to 30 MB runtime. Person / skin: about 16 MB plus runtime. Downloaded assets are cached for offline reuse; storage eviction may require downloading again. Photos never leave this device.")}</p>
       </div>
-      <label className="field-label">
-        Selection operation
-        <select
+      <label className="field-label">{t("Selection operation")}<select
           value={operation}
           onChange={(v) => setOperation(v.target.value as typeof operation)}
         >
-          <option value="new">New mask</option>
-          <option value="add" disabled={!selected}>
-            Add to selected mask
-          </option>
-          <option value="subtract" disabled={!selected}>
-            Subtract from selected mask
-          </option>
+          <option value="new">{t("New mask")}</option>
+          <option value="add" disabled={!selected}>{t("Add to selected mask")}</option>
+          <option value="subtract" disabled={!selected}>{t("Subtract from selected mask")}</option>
         </select>
       </label>
       <div className="tool-grid">
@@ -192,10 +180,10 @@ export default function MaskPanel({
             key={kind}
             disabled={!photo || busy}
             onClick={() => automatic(kind)}
-            title={label}
+            title={t(label)}
           >
             <Icon size={18} />
-            {label}
+            {t(label)}
           </button>
         ))}
         <button
@@ -205,14 +193,12 @@ export default function MaskPanel({
             tools.setErase(false);
           }}
         >
-          <Brush size={18} />
-          Brush mask
-        </button>
+          <Brush size={18} />{t("Brush mask")}</button>
       </div>
       {busy && (
         <>
           <p role="status" className="help">
-            {status}
+            {t(status)}
           </p>
           <button
             className="subtle"
@@ -220,37 +206,32 @@ export default function MaskPanel({
               generation.current++;
               setBusy(false);
               setStatus("Selection cancelled.");
-              import("../ai/client").then((a) => a.disposeAI());
+              disposeAI();
             }}
-          >
-            Cancel selection
-          </button>
+          >{t("Cancel selection")}</button>
         </>
       )}
       {!busy && status && (
         <p className="help" role="status">
-          {status}
+          {t(status)}
         </p>
       )}
       {segments.length > 0 && (
         <div className="segment-list">
           {segments.map((s, i) => (
             <button key={i} onClick={() => add(s, "object")}>
-              {s.label}
+              {t(s.label)}
             </button>
           ))}
         </div>
       )}
-      <p className="help">
-        Skin uses separate face/body-skin classes from a portrait model—not a
-        person silhouette. Results work best on portraits and need review.
-      </p>
+      <p className="help">{t("Skin uses separate face/body-skin classes from a portrait model—not a person silhouette. Results work best on portraits and need review.")}</p>
       <div className="mask-list">
         {e.masks.map((m) => (
           <div key={m.id} className={tools.selected === m.id ? "active" : ""}>
             <button onClick={() => tools.setSelected(m.id)}>{m.name}</button>
             <button
-              title={m.enabled ? "Disable mask" : "Enable mask"}
+              title={t(m.enabled ? "Disable mask" : "Enable mask")}
               onClick={() =>
                 e.setMasks(
                   e.masks.map((x) =>
@@ -263,7 +244,7 @@ export default function MaskPanel({
               {m.enabled ? <Eye size={14} /> : <EyeOff size={14} />}
             </button>
             <button
-              title="Duplicate mask"
+              title={t("Duplicate mask")}
               onClick={() => {
                 const copy = {
                   ...m,
@@ -278,7 +259,7 @@ export default function MaskPanel({
               <Copy size={14} />
             </button>
             <button
-              title="Delete mask"
+              title={t("Delete mask")}
               onClick={() => {
                 e.setMasks(
                   e.masks.filter((x) => x.id !== m.id),
@@ -294,9 +275,7 @@ export default function MaskPanel({
       </div>
       {selected && (
         <>
-          <label className="field-label">
-            Mask name
-            <input
+          <label className="field-label">{t("Mask name")}<input
               value={selected.name}
               maxLength={40}
               onChange={(v) =>
@@ -311,18 +290,14 @@ export default function MaskPanel({
                 tools.setErase(false);
                 tools.setEditing(true);
               }}
-            >
-              Brush / Add
-            </button>
+            >{t("Brush / Add")}</button>
             <button
               className={tools.erase ? "active" : ""}
               onClick={() => {
                 tools.setErase(true);
                 tools.setEditing(true);
               }}
-            >
-              Erase / Subtract
-            </button>
+            >{t("Erase / Subtract")}</button>
           </div>
           <Slider
             label="Brush size"
@@ -343,13 +318,10 @@ export default function MaskPanel({
             className="button primary full"
             onClick={() => tools.setEditing(!tools.editing)}
           >
-            {tools.editing ? "Done selecting" : "Edit selection"}
+            {t(tools.editing ? "Done selecting" : "Edit selection")}
           </button>
-          <p className="help">
-            Selection editing shows the uncropped original coordinates. Crop and
-            rotation return when you press Done.
-          </p>
-          <Group title="Selection edges" open>
+          <p className="help">{t("Selection editing shows the uncropped original coordinates. Crop and rotation return when you press Done.")}</p>
+          <Group title={t("Selection edges")} open>
             <Slider
               label="Feather edges"
               min={0}
@@ -376,12 +348,10 @@ export default function MaskPanel({
                 onChange={(v) =>
                   update({ invert: v.target.checked }, "Invert mask")
                 }
-              />
-              Invert selection
-            </label>
+              />{t("Invert selection")}</label>
           </Group>
           <Group
-            title="Local adjustments"
+            title={t("Local adjustments")}
             open
             onReset={() =>
               update(

@@ -1,0 +1,26 @@
+[
+  {
+    "run": "session-cold",
+    "loadMs": 5839.2507000000005,
+    "totalMs": 112433.6743,
+    "inferenceMs": 112272.058,
+    "calls": 70,
+    "width": 1224,
+    "height": 816,
+    "backend": "native CPU",
+    "downloadCache": "existing disk cache",
+    "outputSHA256": "9f13392fa7984e3f39426b5687bcf6acc2739420fa3bd80b56ec7cb9fa2250eb"
+  },
+  {
+    "run": "warm",
+    "loadMs": 0,
+    "totalMs": 117351.38590000001,
+    "inferenceMs": 117138.48539999993,
+    "calls": 70,
+    "width": 1224,
+    "height": 816,
+    "backend": "native CPU",
+    "downloadCache": "existing disk cache",
+    "outputSHA256": "9f13392fa7984e3f39426b5687bcf6acc2739420fa3bd80b56ec7cb9fa2250eb"
+  }
+]

@@ -5,6 +5,8 @@ import {
   env,
   type ImageSegmentationPipeline,
 } from "@huggingface/transformers";
+import { ModelCache } from "./model-cache";
+import type { Backend, Segment } from "./client";
 env.allowLocalModels = false;
 env.useBrowserCache = true;
 env.backends.onnx.wasm!.numThreads = 1;
@@ -13,59 +15,73 @@ const createSegmenter = pipeline as unknown as (
   model: string,
   options: object,
 ) => Promise<ImageSegmentationPipeline>;
-let model: Promise<ImageSegmentationPipeline> | null = null;
-let backend: "webgpu" | "wasm" = "wasm";
+const cache = new ModelCache<ImageSegmentationPipeline>();
+let backend: "wasm" | "webgpu" = "wasm",
+  requested: Backend | null = null;
 let cachedId = "",
-  cachedResult: Segment[] = [];
-interface Segment {
-  label: string;
-  width: number;
-  height: number;
-  data: Uint8ClampedArray;
-}
+  cachedResult: Segment[] = [],
+  busy = false;
 self.onmessage = async ({ data: m }) => {
+  const send = (payload: object) => self.postMessage({ id: m.id, ...payload });
+  if (busy) {
+    send({ error: "Selection is already running" });
+    return;
+  }
+  busy = true;
   try {
+    if (requested !== m.backend) {
+      // Client normally reuses a backend; explicit diagnostic switches dispose it.
+      if (requested !== null) {
+        try {
+          await (
+            await cache.get(() => Promise.reject(new Error("No model")))
+          ).dispose();
+        } catch {}
+      }
+      cache.clear();
+      cachedId = "";
+      cachedResult = [];
+      requested = m.backend;
+    }
     if (cachedId === m.imageId) {
-      self.postMessage({ result: cachedResult });
+      send({ result: cachedResult });
       return;
     }
-    if (!model) {
-      const load = async () => {
-        const options = {
-          dtype: "fp32" as const,
-          progress_callback: (p: { status: string; progress?: number }) =>
-            self.postMessage({ progress: p.progress ?? 0, status: p.status }),
-        };
-        try {
-          if ("gpu" in navigator) {
-            backend = "webgpu";
-            return (await createSegmenter(
-              "image-segmentation",
-              "Xenova/segformer-b0-finetuned-ade-512-512",
-              { ...options, device: "webgpu" },
-            )) as ImageSegmentationPipeline;
-          }
-        } catch {
-          self.postMessage({ status: "WebGPU unavailable. Switching to CPU." });
-        }
-        backend = "wasm";
-        return (await createSegmenter(
+    const load = (device: "wasm" | "webgpu") =>
+      cache.get(async () => {
+        backend = device;
+        send({
+          status: `Loading semantic model (${device === "wasm" ? "CPU" : "GPU"})...`,
+        });
+        return createSegmenter(
           "image-segmentation",
           "Xenova/segformer-b0-finetuned-ade-512-512",
-          { ...options, device: "wasm" },
-        )) as ImageSegmentationPipeline;
-      };
-      model = load().catch((e) => {
-        model = null;
-        throw e;
+          {
+            device,
+            dtype: "fp32",
+            progress_callback: (p: { status: string; progress?: number }) => {
+              if (p.status === "progress")
+                send({
+                  status: `Downloading semantic model... ${Math.round(p.progress ?? 0)}%`,
+                });
+            },
+          },
+        );
       });
+    let segmenter: ImageSegmentationPipeline;
+    try {
+      segmenter = await load(
+        m.backend === "webgpu" || (m.backend === "auto" && "gpu" in navigator)
+          ? "webgpu"
+          : "wasm",
+      );
+    } catch (error) {
+      if (m.backend !== "auto" || backend !== "webgpu") throw error;
+      send({ retryCpu: true });
+      return;
     }
-    const segmenter = await model;
-    self.postMessage({ status: "Selecting regions on your device…" });
-    const original = new RawImage(m.pixels, m.width, m.height, 4);
-    // Semantic postprocessing resizes every class's logits to input size.
-    // Bound that allocation; masks are resampled in source coordinates later.
     const scale = Math.min(1, 512 / Math.max(m.width, m.height));
+    const original = new RawImage(m.pixels, m.width, m.height, 4);
     const image =
       scale < 1
         ? await original.resize(
@@ -73,38 +89,40 @@ self.onmessage = async ({ data: m }) => {
             Math.max(1, Math.round(m.height * scale)),
           )
         : original;
+    m.pixels = null;
+    send({
+      status: `Selecting regions (${backend === "wasm" ? "CPU" : "GPU"})...`,
+    });
     let output;
     try {
       output = await segmenter(image);
     } catch (error) {
-      if (backend !== "webgpu") throw error;
-      await segmenter.dispose();
-      backend = "wasm";
-      self.postMessage({
-        status: "GPU inference unavailable. Retrying on CPU…",
-      });
-      model = createSegmenter(
-        "image-segmentation",
-        "Xenova/segformer-b0-finetuned-ade-512-512",
-        { device: "wasm", dtype: "fp32" },
-      );
-      output = await (await model)(image);
+      if (backend !== "webgpu" || m.backend !== "auto") throw error;
+      cache.clear();
+      // The client terminates this worker. Do not wait for a failed GPU
+      // runtime to dispose before requesting the clean CPU worker.
+      send({ retryCpu: true });
+      return;
     }
-    const segments = output as { label: string; mask: RawImage }[];
-    cachedResult = segments.map((s) => ({
+    cachedResult = (output as { label: string; mask: RawImage }[]).map((s) => ({
       label: s.label,
       width: s.mask.width,
       height: s.mask.height,
       data: new Uint8ClampedArray(s.mask.data),
     }));
     cachedId = m.imageId;
-    self.postMessage({ result: cachedResult });
-  } catch (e) {
-    self.postMessage({
+    send({ result: cachedResult, backend });
+  } catch (error) {
+    // The client terminates this worker on error; model and intermediate tensors
+    // are freed, including any partially initialized inference runtime.
+    cache.clear();
+    cachedId = "";
+    cachedResult = [];
+    send({
       error:
-        e instanceof Error
-          ? e.message
-          : "Segmentation failed. Try a manual brush mask.",
+        error instanceof Error ? error.message : "Semantic selection failed",
     });
+  } finally {
+    busy = false;
   }
 };

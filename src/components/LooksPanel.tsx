@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { useEffect, useState, useRef } from "react";
 import { Star, Pencil, Trash2 } from "lucide-react";
 import { db, useEditor, type Preset, type Palette } from "../store";
@@ -107,10 +108,10 @@ function LookPreview({
       ref={canvas}
       width={96}
       height={64}
-      aria-label="Global look preview"
+      aria-label={t("Global look preview")}
     />
   ) : (
-    <span className="look-placeholder">Add a photo to preview</span>
+    <span className="look-placeholder">{t("Add a photo to preview")}</span>
   );
 }
 export default function LooksPanel({
@@ -179,10 +180,7 @@ export default function LooksPanel({
   };
   return (
     <>
-      <p className="help">
-        Presets save parameters. Palettes guide color. LUTs carry a global color
-        transform to other apps.
-      </p>
+      <p className="help">{t("Presets save parameters. Palettes guide color. LUTs carry a global color transform to other apps.")}</p>
       <Slider
         label="Look strength"
         min={0}
@@ -195,10 +193,8 @@ export default function LooksPanel({
           type="checkbox"
           checked={favoriteOnly}
           onChange={(v) => setFavoriteOnly(v.target.checked)}
-        />
-        Favorites only
-      </label>
-      <h3 className="section-title">Studio looks</h3>
+        />{t("Favorites only")}</label>
+      <h3 className="section-title">{t("Studio looks")}</h3>
       <div className="looks-grid">
         {builtin
           .filter((p) => !favoriteOnly || favorites.includes(p.name))
@@ -206,7 +202,7 @@ export default function LooksPanel({
             <div className="look-card" key={p.name}>
               <button
                 onClick={() => e.apply({ ...defaults, ...p.params }, p.style)}
-                title={`Apply ${p.name}`}
+                title={t(`Apply ${t(p.name)}`)}
               >
                 <LookPreview
                   photo={photo}
@@ -215,10 +211,10 @@ export default function LooksPanel({
                   params={p.params}
                   style={p.style}
                 />
-                <span>{p.name}</span>
+                <span>{t(p.name)}</span>
               </button>
               <button
-                title={`Favorite ${p.name}`}
+                title={t(`Favorite ${t(p.name)}`)}
                 aria-pressed={favorites.includes(p.name)}
                 onClick={() => favorite(p.name)}
               >
@@ -230,7 +226,7 @@ export default function LooksPanel({
             </div>
           ))}
       </div>
-      <h3 className="section-title">Your presets</h3>
+      <h3 className="section-title">{t("Your presets")}</h3>
       <form
         className="inline-form"
         onSubmit={(v) => {
@@ -247,18 +243,15 @@ export default function LooksPanel({
         }}
       >
         <input
-          aria-label="Preset name"
-          placeholder="Name this look…"
+          aria-label={t("Preset name")}
+          placeholder={t("Name this look…")}
           maxLength={48}
           value={name}
           onChange={(v) => setName(v.target.value)}
         />
-        <button disabled={!name.trim()}>Save</button>
+        <button disabled={!name.trim()}>{t("Save")}</button>
       </form>
-      <p className="help">
-        Saves global settings, without masks or geometry. Color DNA needs a
-        reference in each session.
-      </p>
+      <p className="help">{t("Saves global settings, without masks or geometry. Color DNA needs a reference in each session.")}</p>
       {presets
         .filter((p) => !favoriteOnly || p.favorite)
         .map((p) => (
@@ -277,7 +270,7 @@ export default function LooksPanel({
               <span>{p.name}</span>
             </button>
             <button
-              title={`Favorite ${p.name}`}
+              title={t(`Favorite ${p.name}`)}
               onClick={() =>
                 storage(() =>
                   db.presets.update(p.id!, { favorite: !p.favorite }),
@@ -287,9 +280,9 @@ export default function LooksPanel({
               <Star size={13} fill={p.favorite ? "currentColor" : "none"} />
             </button>
             <button
-              title={`Rename ${p.name}`}
+              title={t(`Rename ${p.name}`)}
               onClick={() => {
-                const value = prompt("Preset name", p.name);
+                const value = prompt(t("Preset name"), p.name);
                 if (value?.trim())
                   storage(() =>
                     db.presets.update(p.id!, {
@@ -301,14 +294,14 @@ export default function LooksPanel({
               <Pencil size={13} />
             </button>
             <button
-              title={`Delete ${p.name}`}
+              title={t(`Delete ${p.name}`)}
               onClick={() => storage(() => db.presets.delete(p.id!))}
             >
               <Trash2 size={13} />
             </button>
           </div>
         ))}
-      <h3 className="section-title">Palette library</h3>
+      <h3 className="section-title">{t("Palette library")}</h3>
       {[...library, ...palettes].map((p, i) => (
         <div className="palette-card" key={`${p.name}-${i}`}>
           <button
@@ -321,14 +314,14 @@ export default function LooksPanel({
                 <span key={j} style={{ background: c }} />
               ))}
             </div>
-            {p.name}
+            {p.id === undefined ? t(p.name) : p.name}
           </button>
           {p.id !== undefined && (
             <>
               <button
-                title={`Rename ${p.name}`}
+                title={t(`Rename ${p.name}`)}
                 onClick={() => {
-                  const value = prompt("Palette name", p.name);
+                  const value = prompt(t("Palette name"), p.name);
                   if (value?.trim())
                     storage(() =>
                       db.palettes.update(p.id!, {
@@ -340,7 +333,7 @@ export default function LooksPanel({
                 <Pencil size={12} />
               </button>
               <button
-                title={`Delete ${p.name}`}
+                title={t(`Delete ${p.name}`)}
                 onClick={() => storage(() => db.palettes.delete(p.id!))}
               >
                 <Trash2 size={12} />
@@ -356,13 +349,13 @@ export default function LooksPanel({
         disabled={!e.style.palette.length}
         onChange={(v) => e.updateStyle({ paletteStrength: v })}
       />
-      <h3 className="section-title">Create a palette</h3>
+      <h3 className="section-title">{t("Create a palette")}</h3>
       <div className="custom-colors">
         {colors.map((c, i) => (
           <input
             key={i}
             type="color"
-            aria-label={`Palette color ${i + 1}`}
+            aria-label={t(`Palette color ${i + 1}`)}
             value={c}
             onChange={(v) =>
               setColors(colors.map((x, j) => (i === j ? v.target.value : x)))
@@ -380,23 +373,19 @@ export default function LooksPanel({
         }}
       >
         <input
-          placeholder="Palette name…"
-          aria-label="Palette name"
+          placeholder={t("Palette name…")}
+          aria-label={t("Palette name")}
           value={paletteName}
           maxLength={48}
           onChange={(v) => setPaletteName(v.target.value)}
         />
-        <button disabled={!paletteName.trim()}>Save</button>
+        <button disabled={!paletteName.trim()}>{t("Save")}</button>
       </form>
       <button
         className="button secondary full"
         onClick={() => e.updateStyle({ palette: colors, paletteStrength: 50 })}
-      >
-        Apply these colors
-      </button>
-      <button className="button primary full" disabled={!photo} onClick={onLut}>
-        Open LUT Studio
-      </button>
+      >{t("Apply these colors")}</button>
+      <button className="button primary full" disabled={!photo} onClick={onLut}>{t("Open LUT Studio")}</button>
     </>
   );
 }

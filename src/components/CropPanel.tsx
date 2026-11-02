@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { defaultGeometry, type Geometry } from "../editor/types";
 import { Slider } from "./Controls";
 export default function CropPanel({
@@ -19,39 +20,32 @@ export default function CropPanel({
 }) {
   return (
     <>
-      <p className="help">
-        Drag a rectangle on the image. Crop first, then rotate and flip. Your
-        original stays untouched.
-      </p>
+      <p className="help">{t("Drag a rectangle on the image. Crop first, then rotate and flip. Your original stays untouched.")}</p>
       {!editing ? (
         <button
           className="button primary full"
           onClick={() => setEditing(true)}
-        >
-          Edit crop & geometry
-        </button>
+        >{t("Edit crop & geometry")}</button>
       ) : (
         <>
-          <label className="field-label">
-            Aspect ratio
-            <select value={aspect} onChange={(e) => setAspect(e.target.value)}>
-              <option value="free">Freeform</option>
-              <option value="original">Original</option>
-              <option value="1">Square · 1:1</option>
-              <option value="1.5">Landscape · 3:2</option>
-              <option value="1.333333">Landscape · 4:3</option>
-              <option value="1.777778">Wide · 16:9</option>
-              <option value="0.8">Portrait · 4:5</option>
-              <option value="0.666667">Portrait · 2:3</option>
+          <label className="field-label">{t("Aspect ratio")}<select value={aspect} onChange={(e) => setAspect(e.target.value)}>
+              <option value="free">{t("Freeform")}</option>
+              <option value="original">{t("Original")}</option>
+              <option value="1">{t("Square · 1:1")}</option>
+              <option value="1.5">{t("Landscape · 3:2")}</option>
+              <option value="1.333333">{t("Landscape · 4:3")}</option>
+              <option value="1.777778">{t("Wide · 16:9")}</option>
+              <option value="0.8">{t("Portrait · 4:5")}</option>
+              <option value="0.666667">{t("Portrait · 2:3")}</option>
             </select>
           </label>
           <div className="crop-values">
             {(["x", "y", "width", "height"] as const).map((k) => (
               <label key={k}>
-                {k}
+                {t(k)}
                 <input
                   type="number"
-                  aria-label={`Crop ${k} percent`}
+                  aria-label={t(`Crop ${k} percent`)}
                   min={k === "width" || k === "height" ? 1 : 0}
                   max={100}
                   step={0.1}
@@ -70,9 +64,7 @@ export default function CropPanel({
               </label>
             ))}
           </div>
-          <label className="field-label">
-            Rotate
-            <select
+          <label className="field-label">{t("Rotate")}<select
               value={draft.rotation}
               onChange={(e) =>
                 setDraft({ ...draft, rotation: +e.target.value })
@@ -80,7 +72,7 @@ export default function CropPanel({
             >
               {[0, 90, 180, 270].map((v) => (
                 <option key={v} value={v}>
-                  {v}°
+                  {t(v)}°
                 </option>
               ))}
             </select>
@@ -98,33 +90,20 @@ export default function CropPanel({
               type="checkbox"
               checked={draft.flipX}
               onChange={(e) => setDraft({ ...draft, flipX: e.target.checked })}
-            />
-            Flip horizontal
-          </label>
+            />{t("Flip horizontal")}</label>
           <label className="checkbox">
             <input
               type="checkbox"
               checked={draft.flipY}
               onChange={(e) => setDraft({ ...draft, flipY: e.target.checked })}
-            />
-            Flip vertical
-          </label>
-          <p className="help">
-            Rotation and straightening are applied on Done. PNG keeps
-            transparent corners; JPEG fills them white.
-          </p>
-          <button className="button primary full" onClick={onApply}>
-            Done · apply geometry
-          </button>
+            />{t("Flip vertical")}</label>
+          <p className="help">{t("Rotation and straightening are applied on Done. PNG keeps transparent corners; JPEG fills them white.")}</p>
+          <button className="button primary full" onClick={onApply}>{t("Done · apply geometry")}</button>
           <button
             className="button secondary full"
             onClick={() => setDraft({ ...defaultGeometry })}
-          >
-            Reset crop & rotation
-          </button>
-          <button className="subtle full" onClick={() => setEditing(false)}>
-            Cancel changes
-          </button>
+          >{t("Reset crop & rotation")}</button>
+          <button className="subtle full" onClick={() => setEditing(false)}>{t("Cancel changes")}</button>
         </>
       )}
     </>

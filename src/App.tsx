@@ -1,4 +1,8 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { t, errorText, toolText, matchesTool } from "./i18n";
+import { usePreferences } from "./preferences";
+import SettingsDialog from "./components/SettingsDialog";
+import { Settings } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Aperture,
   SlidersHorizontal,
@@ -34,6 +38,8 @@ import LooksPanel from "./components/LooksPanel";
 import CropPanel from "./components/CropPanel";
 import Stage from "./components/Stage";
 import ExportDialog from "./components/ExportDialog";
+import EnhancePanel from "./components/EnhancePanel";
+import PanelHandle, { type PanelState } from "./components/PanelHandle";
 import "./studio.css";
 interface InstallPrompt extends Event {
   prompt(): Promise<void>;
@@ -69,8 +75,15 @@ const workspaces = [
     icon: Crop,
     tip: "Crop, rotate, flip and straighten",
   },
+  {
+    id: "enhance",
+    name: "Enhance",
+    icon: Sparkles,
+    tip: "Fast or AI 2x upscaling",
+  },
 ] as const;
 const searchable = [
+  ["Enhance / Upscale / Super resolution", "enhance"],
   ["Light / Exposure / Contrast / Highlights / Shadows", "edit"],
   ["Color / Temperature / Tint / Saturation", "edit"],
   ["Color Mixer / HSL / Hue", "edit"],
@@ -84,6 +97,9 @@ const searchable = [
   ["Crop / Aspect ratio / Rotate / Flip / Straighten", "crop"],
 ] as const;
 export default function App() {
+  usePreferences(); // Re-render presentation text without remounting the editor.
+  const [settings, setSettings] = useState(false);
+  const [panelExpanded, setPanelExpanded] = useState(false);
   const e = useEditor();
   const [target, setTarget] = useState<Photo | null>(null),
     [reference, setReference] = useState<Photo | null>(null),
@@ -97,6 +113,7 @@ export default function App() {
     [drawer, setDrawer] = useState(false),
     [history, setHistory] = useState(false),
     [compare, setCompare] = useState(true),
+    [enhancing, setEnhancing] = useState(false),
     [exportTab, setExportTab] = useState<"image" | "lut" | null>(null),
     [online, setOnline] = useState(navigator.onLine),
     [install, setInstall] = useState<InstallPrompt | null>(null);
@@ -108,6 +125,9 @@ export default function App() {
     [cropEditing, setCropEditing] = useState(false),
     [draft, setDraft] = useState({ ...defaultGeometry }),
     [aspect, setAspect] = useState("free");
+  useEffect(() => {
+    if (!drawer) setPanelExpanded(false);
+  }, [drawer]);
   const ids = useRef({ target: 0, reference: 0 }),
     photos = useRef({ target, reference });
   photos.current = { target, reference };
@@ -133,12 +153,15 @@ export default function App() {
       style: e.style,
       geometry: e.geometry,
       masks: e.masks,
+      upscale: e.upscale,
+      enhanced: e.enhanced,
     }),
-    [e.params, e.style, e.geometry, e.masks],
+    [e.params, e.style, e.geometry, e.masks, e.upscale, e.enhanced],
   );
   const previewDocument = useMemo(
     () => ({
       ...document,
+      enhanced: maskEditing || cropEditing ? undefined : document.enhanced,
       geometry:
         maskEditing || cropEditing ? defaultGeometry : document.geometry,
     }),
@@ -230,6 +253,9 @@ export default function App() {
         setDraft({ ...defaultGeometry });
       } else {
         setReference(photo);
+        useEditor
+          .getState()
+          .commit({ enhanced: undefined, upscale: "none" }, "Change reference");
         setRefStats(stats);
       }
     } catch (err) {
@@ -242,6 +268,7 @@ export default function App() {
     }
   };
   function navigate(workspace: Workspace) {
+    setPanelExpanded(false);
     if (active === workspace) setDrawer((v) => !v);
     else setDrawer(true);
     setActive(workspace);
@@ -277,52 +304,54 @@ export default function App() {
       <header className="topbar">
         <button
           className="studio-brand"
-          title="LightDNA Studio"
+          title={t("Lumerix Studio")}
           onClick={() => {
             setActive("edit");
             setDrawer(false);
           }}
         >
           <span>
-            <Aperture size={23} />
+            <img src="/icon.svg" alt="" width="34" height="34" />
           </span>
-          Light<b>DNA</b>
+          Lumerix
           <small>STUDIO</small>
         </button>
         <div className="session-name">
-          {target ? target.name : "A fresh perspective"}
+          {t(target ? target.name : "A fresh perspective")}
           <span>
-            {target ? "Non-destructive editing" : "Private. Local. Yours."}
+            {t(target ? "Non-destructive editing" : "Private. Local. Yours.")}
           </span>
         </div>
         <div className="top-actions">
+          <button title={t("Settings")} aria-label={t("Settings")} aria-haspopup="dialog" onClick={() => setSettings(true)}><Settings size={18} /></button>
           <button
-            title="Undo (Ctrl/Cmd Z)"
-            aria-label="Undo"
+            title={t("Undo (Ctrl/Cmd Z)")}
+            aria-label={t("Undo")}
             disabled={!e.past.length}
             onClick={e.undo}
           >
             <Undo2 size={18} />
           </button>
           <button
-            title="Redo (Ctrl/Cmd Shift Z)"
-            aria-label="Redo"
+            title={t("Redo (Ctrl/Cmd Shift Z)")}
+            aria-label={t("Redo")}
             disabled={!e.future.length}
             onClick={e.redo}
           >
             <Redo2 size={18} />
           </button>
           <button
-            title="History & shortcuts (?)"
-            aria-label="History"
+            title={t("History & shortcuts (?)")}
+            aria-label={t("History")}
             className={history ? "active" : ""}
             onClick={() => setHistory(!history)}
           >
             <History size={18} />
           </button>
           <button
-            title="New session"
-            aria-label="New session"
+            title={t("New session")}
+            className="new-session"
+            aria-label={t("New session")}
             onClick={newSession}
           >
             <FolderPlus size={18} />
@@ -334,64 +363,61 @@ export default function App() {
                 await install.prompt();
                 setInstall(null);
               }}
-            >
-              Install
-            </button>
+            >{t("Install")}</button>
           )}
           <button
             className="button primary"
-            disabled={!target || !source || loading.target}
+            aria-label={t("Export")}
+            disabled={!target || !source || loading.target || enhancing}
             onClick={() => setExportTab("image")}
           >
             <Download size={15} />
-            <span>Export</span>
+            <span>{t("Export")}</span>
           </button>
         </div>
       </header>
       {error && (
         <div className="studio-error" role="alert">
-          <span>{error}</span>
-          <button title="Dismiss error" onClick={() => setError("")}>
+          <span>{errorText(error)}</span>
+          <button title={t("Dismiss error")} onClick={() => setError("")}>
             <X size={16} />
           </button>
         </div>
       )}
       {history && (
         <div className="history-popover">
-          <h3>Session history</h3>
-          <p>
-            Ctrl/Cmd Z · undo
-            <br />
-            Ctrl/Cmd Shift Z · redo
-            <br />B · before/after · F · fit
-            <br />
-            Escape · leave selection
-          </p>
+          <h3>{t("Session history")}</h3>
+          <p>{t("Ctrl/Cmd Z · undo")}<br />{t("Ctrl/Cmd Shift Z · redo")}<br />{t("B · before/after · F · fit")}<br />{t("Escape · leave selection")}</p>
           <ol>
             {e.past.map((entry, i) => (
-              <li key={i}>{entry.label}</li>
+              <li key={i}>{t(entry.label)}</li>
             ))}
           </ol>
-          {!e.past.length && <p>Your next edit will appear here.</p>}
+          {!e.past.length && <p>{t("Your next edit will appear here.")}</p>}
         </div>
       )}
-      <main className="studio-layout">
-        <nav className="workspace-nav" aria-label="Editing workspaces">
+      <main
+        className="studio-layout"
+        data-panel={
+          !drawer ? "collapsed" : panelExpanded ? "expanded" : "normal"
+        }
+      >
+        <nav className="workspace-nav" aria-label={t("Editing workspaces")}>
           {workspaces.map(({ id, name, icon: Icon, tip }) => (
             <button
               key={id}
-              title={tip}
+              title={t(tip)}
               aria-pressed={active === id}
               className={active === id ? "active" : ""}
               onClick={() => navigate(id)}
             >
               <Icon size={21} />
-              <span>{name}</span>
+              <span>{t(name)}</span>
             </button>
           ))}
           <div className="nav-bottom">
             <ShieldCheck size={18} />
-            <span>ON DEVICE</span>
+            <span>{t("ON DEVICE")}</span>
           </div>
         </nav>
         <Stage
@@ -423,37 +449,46 @@ export default function App() {
           }}
         />
         <aside className={`sidepanel ${drawer ? "drawer-open" : ""}`}>
+          <PanelHandle
+            state={
+              !drawer ? "collapsed" : panelExpanded ? "expanded" : "normal"
+            }
+            onChange={(state: PanelState) => {
+              setDrawer(state !== "collapsed");
+              setPanelExpanded(state === "expanded");
+            }}
+          />
           <div className="side-heading">
             <div>
-              <span className="eyebrow">MAKE IT YOURS</span>
-              <h2>{workspaces.find((w) => w.id === active)?.name}</h2>
+              <span className="eyebrow">{t("MAKE IT YOURS")}</span>
+              <h2>{t(workspaces.find((w) => w.id === active)?.name)}</h2>
             </div>
             <button
               className="mobile-only"
-              title="Close tools"
+              title={t("Close tools")}
               onClick={() => setDrawer(false)}
             >
               <ChevronDown size={20} />
             </button>
             <select
-              aria-label="Control density"
+              aria-label={t("Control density")}
               value={advanced ? "advanced" : "beginner"}
               onChange={(v) => setAdvanced(v.target.value === "advanced")}
             >
-              <option value="beginner">Beginner</option>
-              <option value="advanced">Advanced</option>
+              <option value="beginner">{t("Beginner")}</option>
+              <option value="advanced">{t("Advanced")}</option>
             </select>
           </div>
           <div className="tool-search">
             <Search size={14} />
             <input
-              aria-label="Search editing tools"
-              placeholder="Find a tool…"
+              aria-label={t("Search editing tools")}
+              placeholder={t("Find a tool…")}
               value={search}
               onChange={(v) => setSearch(v.target.value)}
             />
             {search && (
-              <button title="Clear search" onClick={() => setSearch("")}>
+              <button title={t("Clear search")} onClick={() => setSearch("")}>
                 <X size={13} />
               </button>
             )}
@@ -463,7 +498,7 @@ export default function App() {
               <div className="search-results">
                 {searchable
                   .filter(([name]) =>
-                    name.toLowerCase().includes(search.toLowerCase()),
+                    matchesTool(name, search),
                   )
                   .map(([name, id]) => (
                     <button
@@ -471,22 +506,22 @@ export default function App() {
                       onClick={() => {
                         setActive(id);
                         setAdvanced(true);
-                        setSearch(id==='edit'?name.split('/')[0].trim():'');
+                        setSearch(
+                          id === "edit" ? name.split("/")[0].trim() : "",
+                        );
                         if (id === "crop") {
                           setDraft({ ...e.geometry });
                           setCropEditing(true);
                         }
                       }}
                     >
-                      {name}
+                      {toolText(name)}
                     </button>
                   ))}
                 {!searchable.some(([name]) =>
-                  name.toLowerCase().includes(search.toLowerCase()),
+                  matchesTool(name, search),
                 ) && (
-                  <p className="help">
-                    No tools match. Try “sky”, “curve” or “exposure”.
-                  </p>
+                  <p className="help">{t("No tools match. Try “sky”, “curve” or “exposure”.")}</p>
                 )}
               </div>
             )}
@@ -495,17 +530,40 @@ export default function App() {
                 <details className="source-disclosure">
                   <summary>
                     <Layers size={14} />
-                    {target ? "Source photograph" : "Open your photograph"}
+                    {t(target ? "Source photograph" : "Open your photograph")}
                   </summary>
                   <Upload
                     label="Target"
                     photo={target}
                     busy={loading.target}
                     onLoad={(f) => load(f, "target")}
+                    onRemove={() => {
+                      ids.current.target++;
+                      if (target) URL.revokeObjectURL(target.url);
+                      photos.current.target = null;
+                      setTarget(null);
+                      setSource(null);
+                      setLoading((s) => ({ ...s, target: false }));
+                      e.newImage();
+                      setSelected(null);
+                      setMaskEditing(false);
+                      setCropEditing(false);
+                      setDraft({ ...defaultGeometry });
+                    }}
                   />
                 </details>
                 <EditPanel advanced={advanced} search={search} />
               </>
+            )}
+            {active === "enhance" && (
+              <EnhancePanel
+                photo={target}
+                source={source}
+                reference={refStats}
+                document={document}
+                rendering={busy || loading.target}
+                onProcessing={setEnhancing}
+              />
             )}
             {active === "dna" && (
               <DnaPanel
@@ -517,6 +575,12 @@ export default function App() {
                   ids.current.reference++;
                   if (reference) URL.revokeObjectURL(reference.url);
                   setReference(null);
+                  useEditor
+                    .getState()
+                    .commit(
+                      { enhanced: undefined, upscale: "none" },
+                      "Remove reference",
+                    );
                   setRefStats(null);
                   setLoading((s) => ({ ...s, reference: false }));
                 }}
@@ -524,7 +588,12 @@ export default function App() {
               />
             )}
             <div hidden={active !== "ai"}>
-              <MaskPanel photo={target} tools={tools} onError={onError} />
+              <MaskPanel
+                active={active === "ai" && !loading.target}
+                photo={target}
+                tools={tools}
+                onError={onError}
+              />
             </div>
             {active === "looks" && (
               <LooksPanel
@@ -558,22 +627,25 @@ export default function App() {
       <footer className="studio-status">
         <span>
           <i className={busy ? "working" : ""} />
-          {busy
-            ? "Developing"
-            : loading.target || loading.reference
-              ? "Reading image"
-              : "Ready"}
+          {t(enhancing
+            ? "Upscaling"
+            : busy
+              ? "Developing"
+              : loading.target || loading.reference
+                ? "Reading image"
+                : "Ready")}
         </span>
         <span>
-          {target
+          {t(target
             ? `${e.masks.length} masks · ${e.past.length} reversible edits`
-            : "Your photograph is the starting point."}
+            : "Your photograph is the starting point.")}
         </span>
         <span>
           <ShieldCheck size={11} />
-          {online ? "Local processing" : "Offline mode"}
+          {t(online ? "Local processing" : "Offline mode")}
         </span>
       </footer>
+      {settings && <SettingsDialog onClose={() => setSettings(false)} />}
       {target && source && exportTab && (
         <ExportDialog
           photo={target}

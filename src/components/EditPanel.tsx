@@ -1,3 +1,4 @@
+import { t, matchesTool } from "../i18n";
 import { useState } from "react";
 import { useEditor } from "../store";
 import { defaults, type Params } from "../processing/adjustments";
@@ -33,7 +34,7 @@ export default function EditPanel({
   const e = useEditor(),
     [channel, setChannel] = useState(0);
   const matches = (title: string) =>
-    !search || title.toLowerCase().includes(search.toLowerCase());
+    !search || matchesTool(title, search);
   const sliders = (keys: string[]) =>
     basicControls
       .filter((c) => keys.includes(c.key))
@@ -60,13 +61,10 @@ export default function EditPanel({
     );
   return (
     <>
-      <p className="help">
-        Start with the light. Every slider is live, and every edit is
-        reversible.
-      </p>
+      <p className="help">{t("Start with the light. Every slider is live, and every edit is reversible.")}</p>
       {matches("Light Exposure Contrast Highlights Shadows") && (
         <Group
-          title="Light"
+          title={t("Light")}
           open
           onReset={() =>
             reset(["exposure", "contrast", "highlights", "shadows"])
@@ -77,7 +75,7 @@ export default function EditPanel({
       )}
       {matches("Color Saturation Temperature Tint") && (
         <Group
-          title="Color"
+          title={t("Color")}
           open
           onReset={() => reset(["saturation", "warmth", "tint"])}
         >
@@ -90,13 +88,11 @@ export default function EditPanel({
             "Color Mixer HSL Hue Red Orange Yellow Green Aqua Blue Purple Magenta",
           ) && (
             <Group
-              title="Color Mixer · HSL"
+              title={t("Color Mixer · HSL")}
               open={!!search}
               onReset={() => e.updateStyle({ mixer: defaultStyle().mixer })}
             >
-              <p className="help">
-                Change one color family without changing the others.
-              </p>
+              <p className="help">{t("Change one color family without changing the others.")}</p>
               <div className="color-families">
                 {[
                   "#ef6969",
@@ -111,7 +107,7 @@ export default function EditPanel({
                   <button
                     key={color}
                     title={
-                      [
+                      t([
                         "Red",
                         "Orange",
                         "Yellow",
@@ -120,9 +116,9 @@ export default function EditPanel({
                         "Blue",
                         "Purple",
                         "Magenta",
-                      ][i]
+                      ][i])
                     }
-                    aria-label={`Edit ${["Red", "Orange", "Yellow", "Green", "Aqua", "Blue", "Purple", "Magenta"][i]}`}
+                    aria-label={t(`Edit ${["Red", "Orange", "Yellow", "Green", "Aqua", "Blue", "Purple", "Magenta"][i]}`)}
                     aria-pressed={channel === i}
                     style={{ background: color }}
                     onClick={() => setChannel(i)}
@@ -149,7 +145,7 @@ export default function EditPanel({
           )}
           {matches("Color Grading Midtones Hue") && (
             <Group
-              title="Color Grading"
+              title={t("Color Grading")}
               open={!!search}
               onReset={() => e.updateStyle({ grading: defaultStyle().grading })}
             >
@@ -187,7 +183,7 @@ export default function EditPanel({
           )}
           {matches("Effects Clarity Grain Vignette") && (
             <Group
-              title="Effects"
+              title={t("Effects")}
               open={!!search}
               onReset={() => reset(["clarity", "grain", "vignette"])}
             >
@@ -196,27 +192,24 @@ export default function EditPanel({
           )}
           {matches("Detail Sharpness Noise smoothing") && (
             <Group
-              title="Detail"
+              title={t("Detail")}
               open={!!search}
               onReset={() => reset(["sharpness", "noise"])}
             >
               {sliders(["sharpness", "noise"])}
-              <p className="help">
-                Inspect at 100% for fine detail. Noise smoothing is a light
-                luminance filter.
-              </p>
+              <p className="help">{t("Inspect at 100% for fine detail. Noise smoothing is a light luminance filter.")}</p>
             </Group>
           )}
           {matches("Tone Curve Black point White point") && (
             <Group
-              title="Tone Curve"
+              title={t("Tone Curve")}
               open={!!search}
               onReset={() => e.updateStyle({ curve: defaultStyle().curve })}
             >
               <svg
                 viewBox="0 0 200 110"
                 className="curve-chart"
-                aria-label="RGB tone curve"
+                aria-label={t("RGB tone curve")}
               >
                 <path d="M0 110 L200 0" stroke="#555" fill="none" />
                 <polyline
@@ -263,14 +256,9 @@ export default function EditPanel({
           )}
         </>
       )}
-      <button className="button secondary full" onClick={e.reset}>
-        Reset global adjustments
-      </button>
+      <button className="button secondary full" onClick={e.reset}>{t("Reset global adjustments")}</button>
       {!advanced && (
-        <p className="help">
-          Switch to Advanced for the Color Mixer, Color Grading, Effects, Detail
-          and Tone Curve.
-        </p>
+        <p className="help">{t("Switch to Advanced for the Color Mixer, Color Grading, Effects, Detail and Tone Curve.")}</p>
       )}
     </>
   );

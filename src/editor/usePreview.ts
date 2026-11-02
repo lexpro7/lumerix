@@ -4,6 +4,7 @@ import type { Analysis } from "../processing/analysis";
 import type { DocumentState } from "./types";
 import { job } from "../processing/client";
 export interface RenderResult {
+  upscaled?: boolean;
   pixels: Uint8ClampedArray;
   before: Uint8ClampedArray;
   width: number;

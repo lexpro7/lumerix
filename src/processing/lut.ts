@@ -38,7 +38,7 @@ export function cubeText(values: Float32Array, size: number, name: string) {
     throw new Error("Invalid LUT dimensions.");
   const lines = [
     `TITLE "${name.replace(/["\r\n]/g, " ").slice(0, 80)}"`,
-    "# LightDNA: global sRGB input and output; red varies fastest.",
+    "# Lumerix: global sRGB input and output; red varies fastest.",
     `LUT_3D_SIZE ${size}`,
     "DOMAIN_MIN 0.0 0.0 0.0",
     "DOMAIN_MAX 1.0 1.0 1.0",

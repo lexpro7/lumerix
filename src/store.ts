@@ -31,6 +31,8 @@ interface EditorStore extends DocumentState {
 }
 function snapshot(s: DocumentState): DocumentState {
   return {
+    upscale: s.upscale,
+    enhanced: s.enhanced,
     params: s.params,
     style: s.style,
     geometry: s.geometry,
@@ -48,6 +50,9 @@ export const useEditor = create<EditorStore>()((set, get) => ({
       const now = Date.now(),
         merge = key && s.lastKey === key && now - s.lastTime < 450;
       return {
+        ...(patch.params || patch.style || patch.geometry || patch.masks
+          ? { enhanced: undefined, upscale: "none" as const }
+          : {}),
         ...patch,
         past: merge
           ? s.past

@@ -1,8 +1,11 @@
-﻿# LightDNA Studio
+﻿# Lumerix Studio
 
-An offline-first, on-device photo editor built by extending the existing LightDNA PWA. React, TypeScript, Vite, Tailwind, Lucide, Zustand and Dexie remain in place. Existing v1 custom presets migrate without deletion, and the original Reinhard Lab transfer remains available as **Classic**.
+An offline-first, on-device photo editor built by extending the existing photo editing PWA. React, TypeScript, Vite, Tailwind, Lucide, Zustand and Dexie remain in place. Existing v1 custom presets migrate without deletion, and the original Reinhard Lab transfer remains available as **Classic**.
 
 ## Launch and validate
+
+The new Enhance workspace supports Fast and AI 2x upscaling. See
+[ENHANCE.md](ENHANCE.md) for usage, memory limits and current verification gaps.
 
 Current audit, executed test results, limitations and next steps:
 [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md). Mobile development is deferred
@@ -83,3 +86,7 @@ The browser file-picker automation extension may need its “Allow access to fil
 - No persistent photo project files, cloud sync or photo autosave.
 - Real-scene segmentation accuracy and low-memory/mobile GPU compatibility require a broader device/photo test matrix than the synthetic integration checks.
 - The dependency audit currently reports four low-severity findings in the existing Workbox/rollup `deepmerge` build-tool chain. The high-severity transitive `sharp` issue is patched via an override; `sharp` is not part of the browser image pipeline. No force downgrade of PWA support was applied.
+
+## Branding assets
+
+The transparent aperture vector is `public/icon.svg`. Regenerate favicon, PWA and Apple touch PNGs with `node scripts/generate-brand-icons.mjs`. The maskable icon uses a separate opaque background and safe padding. Legacy storage/cache identifiers are intentionally preserved to retain user data.

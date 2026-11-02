@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { useId, type ReactNode } from "react";
 import { RotateCcw, ChevronDown } from "lucide-react";
 export function Slider({
@@ -25,13 +26,13 @@ export function Slider({
   return (
     <div className="control">
       <div>
-        <label htmlFor={id} title={hint}>
-          {label}
+        <label htmlFor={id} title={t(hint)}>
+          {t(label)}
         </label>
         <output>{step < 1 ? value.toFixed(2) : Math.round(value)}</output>
         <button
-          title={`Reset ${label}`}
-          aria-label={`Reset ${label}`}
+          title={t(`Reset ${label}`)}
+          aria-label={t(`Reset ${label}`)}
           onClick={() => onChange(reset)}
           disabled={disabled || value === reset}
         >
@@ -49,7 +50,7 @@ export function Slider({
         onChange={(e) => onChange(+e.target.value)}
         onDoubleClick={() => onChange(reset)}
       />
-      {hint && <small>{hint}</small>}
+      {hint && <small>{t(hint)}</small>}
     </div>
   );
 }
@@ -67,14 +68,12 @@ export function Group({
   return (
     <details className="tool-group" open={open || undefined}>
       <summary>
-        {title}
+        {t(title)}
         <ChevronDown size={14} />
       </summary>
       <div className="group-content">
         {onReset && (
-          <button className="subtle group-reset" onClick={onReset}>
-            Reset group
-          </button>
+          <button className="subtle group-reset" onClick={onReset}>{t("Reset group")}</button>
         )}
         {children}
       </div>
